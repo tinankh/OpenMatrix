@@ -271,11 +271,6 @@ HML_CELLARRAY* OMLCellArrayImpl::GetCells() const
 	return _cells;
 }
 
-OMLCurrencyListImpl::~OMLCurrencyListImpl()
-{
-	delete [] _list;
-}
-
 int OMLCurrencyListImpl::Size() const
 {
 	return _count;
@@ -327,10 +322,6 @@ void OMLCurrencyListImpl::AddMatrix(OMLMatrix* mtx)
 void OMLCurrencyListImpl::AddMatrix(const hwMatrix* mtx)
 {
 	Expand();
-
-	hwMatrix* cheat = (hwMatrix*)mtx;
-	cheat->IncrRefCount(); 
-
 	_list[_count-1] = new OMLCurrencyImpl((hwMatrix*)mtx);
 }
 
@@ -343,10 +334,6 @@ void OMLCurrencyListImpl::AddNDMatrix(OMLNDMatrix* mtx)
 void OMLCurrencyListImpl::AddNDMatrix(const hwMatrixN* mtx)
 {
 	Expand();
-
-	hwMatrixN* cheat = (hwMatrixN*)mtx;
-	cheat->IncrRefCount();
-
 	_list[_count-1] = new OMLCurrencyImpl((hwMatrixN*)mtx);
 }
 
@@ -356,18 +343,9 @@ void OMLCurrencyListImpl::AddComplex(OMLComplex* cplx)
 	_list[_count-1] = cplx->GetCurrency();
 }
 
-void OMLCurrencyListImpl::AddComplex(hwComplex cplx)
-{
-	Expand();
-	_list[_count-1] = new OMLCurrencyImpl(cplx);
-}
-
 void OMLCurrencyListImpl::AddCellArray(HML_CELLARRAY* cells)
 {
 	Expand();
-	
-	cells->IncrRefCount();
-
 	_list[_count-1] = new OMLCurrencyImpl(cells);
 }
 
@@ -395,11 +373,6 @@ void OMLCurrencyListImpl::AddFunctionHandle(FunctionInfo* fi)
 	_list[_count-1] = new OMLCurrencyImpl(new FunctionInfo(*fi));
 }
 
-double* OMLCurrencyListImpl::AllocateData(int size)
-{
-	return (new double [size]);
-}
-
 OMLCellArray* OMLCurrencyListImpl::CreateCellArray(int rows, int cols)
 {
 	HML_CELLARRAY* cells = new HML_CELLARRAY(rows, cols, HML_CELLARRAY::REAL);
@@ -416,7 +389,6 @@ OMLStruct* OMLCurrencyListImpl::CreateStruct(int rows, int cols)
 OMLMatrix* OMLCurrencyListImpl::CreateMatrix(int rows, int cols, double* data)
 {
 	hwMatrix* mtx = new hwMatrix(rows, cols, data, hwMatrix::REAL);
-	mtx->OwnData(true);
 	return new OMLMatrixImpl(mtx);
 }
 
@@ -438,26 +410,16 @@ OMLNDMatrix* OMLCurrencyListImpl::CreateNDMatrix(int num_dims, int* dims, double
 	for (int j=0; j<num_dims; j++)
 		dim_vec.push_back(dims[j]);
 
-	hwMatrixN mtx_1(dim_vec, real, hwMatrixN::REAL);
-	hwMatrixN mtx_2(dim_vec, imag, hwMatrixN::REAL);
-	
-	hwMatrixN* result = new hwMatrixN;
-
-	result->PackComplex(mtx_1, &mtx_2);
-
-	return new OMLNDMatrixImpl(result);
+	// still need to handle imaginary data
+	hwMatrixN* mtx = new hwMatrixN(dim_vec, real, hwMatrixN::REAL);
+	return new OMLNDMatrixImpl(mtx);
 }
 
 OMLMatrix* OMLCurrencyListImpl::CreateMatrix(int rows, int cols, double* real, double* imag)
 {
-	hwMatrix mtx_1(rows, cols, real, hwMatrix::REAL);
-	hwMatrix mtx_2(rows, cols, imag, hwMatrix::REAL);
-	
-	hwMatrix* result = new hwMatrix;
-
-	result->PackComplex(mtx_1, &mtx_2);
-
-	return new OMLMatrixImpl(result);
+	// need to pass in the imaginary data too somehow
+	hwMatrix* mtx = new hwMatrix(rows, cols, real, hwMatrix::COMPLEX);
+	return new OMLMatrixImpl(mtx);
 }
 
 OMLCurrency* OMLCurrencyListImpl::CreateCurrencyFromDouble(double dbl)
@@ -532,67 +494,4 @@ OMLCurrency* OMLStructImpl::GetCurrency() const
 StructData* OMLStructImpl::GetStructData() const
 {
 	return _sd;
-}
-
-std::vector<OMLCurrencyImpl*> OMLCurrencyImpl::cached_pointers;
-void OMLCurrencyImpl::GarbageCollect()
-{
-	for (int j=0; j<cached_pointers.size(); j++)
-		delete cached_pointers[j];
-
-	cached_pointers.clear();
-}
-
-std::vector<OMLComplexImpl*> OMLComplexImpl::cached_pointers;
-void OMLComplexImpl::GarbageCollect()
-{
-	for (int j=0; j<cached_pointers.size(); j++)
-		delete cached_pointers[j];
-
-	cached_pointers.clear();
-}
-
-std::vector<OMLMatrixImpl*> OMLMatrixImpl::cached_pointers;
-void OMLMatrixImpl::GarbageCollect()
-{
-	for (int j=0; j<cached_pointers.size(); j++)
-		delete cached_pointers[j];
-
-	cached_pointers.clear();
-}
-
-std::vector<OMLNDMatrixImpl*> OMLNDMatrixImpl::cached_pointers;
-void OMLNDMatrixImpl::GarbageCollect()
-{
-	for (int j=0; j<cached_pointers.size(); j++)
-		delete cached_pointers[j];
-
-	cached_pointers.clear();
-}
-
-std::vector<OMLCellArrayImpl*> OMLCellArrayImpl::cached_pointers;
-void OMLCellArrayImpl::GarbageCollect()
-{
-	for (int j=0; j<cached_pointers.size(); j++)
-		delete cached_pointers[j];
-
-	cached_pointers.clear();
-}
-
-std::vector<OMLStructImpl*> OMLStructImpl::cached_pointers;
-void OMLStructImpl::GarbageCollect()
-{
-	for (int j=0; j<cached_pointers.size(); j++)
-		delete cached_pointers[j];
-
-	cached_pointers.clear();
-}
-
-std::vector<OMLFunctionHandleImpl*> OMLFunctionHandleImpl::cached_pointers;
-void OMLFunctionHandleImpl::GarbageCollect()
-{
-	for (int j=0; j<cached_pointers.size(); j++)
-		delete cached_pointers[j];
-
-	cached_pointers.clear();
 }
